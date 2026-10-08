@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "type": "MirrorList",
+      "key": "mirror",
+      "title": "API Mirror",
+      "description": "Select server endpoint or mirror",
+      "default": "https://api.example.com",
+      "mirrors": [
+        "https://api.example.com",
+        "https://mirror.example.com"
+      ]
+    },
+    {
+      "type": "Toggle",
+      "key": "enable_hq",
+      "title": "High Quality",
+      "description": "Prefer 1080p and higher bitrate streams",
+      "default": true
+    },
+    {
+      "type": "Text",
+      "key": "api_key",
+      "title": "API Token",
+      "description": "Optional access token for private API",
+      "default": ""
+    },
+    {
+      "type": "Action",
+      "id": "ping",
+      "title": "Test Connection",
+      "description": "Check latency to active mirror"
+    }
+  ]
+}

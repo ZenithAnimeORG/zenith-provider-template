@@ -1,0 +1,21 @@
+{
+  "id": "template_provider",
+  "name": "Template Provider",
+  "version": "1.0.0",
+  "author": "Zenith Community",
+  "description": "Starter template provider demonstrating catalog search and stream resolution.",
+  "entryClass": "com.example.zenith.provider.SampleProviderFactory",
+  "capabilities": [
+    "CATALOG",
+    "MEDIA_SOURCE"
+  ],
+  "hosts": [
+    "api.example.com",
+    "*.example.com"
+  ],
+  "settings": "settings.json",
+  "icon": "icon.png",
+  "entry": {
+    "jvm": "provider.jar"
+  }
+}
