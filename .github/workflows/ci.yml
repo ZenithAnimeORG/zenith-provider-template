@@ -20,6 +20,19 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v3
 
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          repository: ZenithAnimeORG/zenith-provider-sdk
+          path: _sdk
+
+      - name: Build and Publish SDK to Maven Local
+        run: |
+          cd _sdk
+          chmod +x gradlew
+          ./gradlew publishToMavenLocal --no-daemon
+          cd ..
+
       - name: Run Tests and Assemble .zpk
         uses: gradle/actions/setup-gradle@v3
         with:
