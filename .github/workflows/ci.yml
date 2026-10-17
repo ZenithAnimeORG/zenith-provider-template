@@ -22,6 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ZenithAnimeORG/zenith-provider-sdk
+          ref: 31352b446253ce2aaa657f5cfe5b3f176d66b572
           path: _sdk
 
       - name: Build and Publish SDK to Maven Local
@@ -30,6 +31,9 @@ jobs:
           chmod +x gradlew
           ./gradlew publishToMavenLocal --no-daemon
           cd ..
+
+      - name: Test package catalog tooling
+        run: python3 -m unittest tools.test_zpk_tool
 
       - name: Run Tests and Assemble .zpk
         uses: gradle/actions/setup-gradle@v3

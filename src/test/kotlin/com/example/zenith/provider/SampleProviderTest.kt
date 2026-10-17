@@ -1,8 +1,9 @@
 package com.example.zenith.provider
 
 import com.pilldev.zenith.provider.model.PluginManifest
+import com.pilldev.zenith.provider.model.MediaId
+import com.pilldev.zenith.provider.model.MediaRef
 import com.pilldev.zenith.provider.model.ProviderCapability
-import com.pilldev.zenith.provider.model.ProviderEpisode
 import com.pilldev.zenith.provider.model.ProviderId
 import com.pilldev.zenith.provider.model.ProviderResult
 import com.pilldev.zenith.provider.testkit.FakeProviderContext
@@ -19,7 +20,7 @@ class SampleProviderTest : ProviderContractTestBase() {
     private val manifest = PluginManifest(
         id = ProviderId("template_provider"),
         name = "Template Provider",
-        version = "1.0.0",
+        version = "0.1.0",
         capabilities = setOf(ProviderCapability.CATALOG, ProviderCapability.MEDIA_SOURCE),
         entryClass = "com.example.zenith.provider.SampleProviderFactory",
         hosts = listOf("api.example.com"),
@@ -31,7 +32,7 @@ class SampleProviderTest : ProviderContractTestBase() {
     }
 
     @Test
-    fun testFactoryCreatesSampleProvider() {
+    fun testFactoryCreatesSampleProvider() = runTest {
         val factory = SampleProviderFactory()
         val provider = factory.create(manifest)
         assertEquals(manifest.id, provider.manifest.id)
@@ -46,7 +47,7 @@ class SampleProviderTest : ProviderContractTestBase() {
             initialSettings = mapOf("mirror" to "https://api.example.com"),
             effectiveMirrorValue = "https://api.example.com",
         )
-        provider.init(context)
+        provider.initialize(context)
 
         val searchResult = provider.search("Demon Slayer")
         assertIs<ProviderResult.Success<*>>(searchResult)
@@ -62,7 +63,13 @@ class SampleProviderTest : ProviderContractTestBase() {
     @Test
     fun testMediaStreamResolution() = runTest {
         val provider = SampleProvider(manifest)
-        val sourcesResult = provider.getSources(shikimoriId = 1, animeName = "Test", russianName = "Тест")
+        val sourcesResult = provider.getSources(
+            MediaRef(
+                id = MediaId("sample_1"),
+                title = "Test",
+                alternateTitles = listOf("Тест"),
+            ),
+        )
         assertIs<ProviderResult.Success<*>>(sourcesResult)
         val sources = (sourcesResult as ProviderResult.Success).data
         assertTrue(sources.isNotEmpty())
@@ -81,7 +88,7 @@ class SampleProviderTest : ProviderContractTestBase() {
             initialSettings = mapOf("mirror" to "https://api.example.com"),
             effectiveMirrorValue = "https://api.example.com",
         )
-        provider.init(context)
+        provider.initialize(context)
 
         val pingResult = provider.executeAction("ping", context)
         assertNotNull(pingResult)

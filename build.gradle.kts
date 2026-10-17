@@ -1,17 +1,19 @@
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
 
 group = "com.example.zenith.provider"
-version = "1.0.0"
+version = "0.1.0"
 
 kotlin {
     jvmToolchain(21)
 }
 
 dependencies {
-    compileOnly(libs.zenith.provider.sdk)
+    implementation(libs.zenith.provider.sdk)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.client.core)
@@ -27,6 +29,16 @@ dependencies {
 tasks.jar {
     archiveFileName.set("provider.jar")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        configurations.runtimeClasspath.get().incoming.artifacts.artifacts
+            .filter { artifact ->
+                val component = artifact.id.componentIdentifier as? ModuleComponentIdentifier
+                component != null && component.group != "com.pilldev.zenith"
+            }
+            .map { artifact -> zipTree(artifact.file) }
+    }) {
+        exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/INDEX.LIST")
+    }
 }
 
 val d8Exe = findD8Executable()

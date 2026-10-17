@@ -19,7 +19,7 @@ import com.pilldev.zenith.provider.model.ProviderVideoSource
 
 public class SampleProvider(
     override val manifest: PluginManifest,
-) : BaseZenithProvider(manifest), CatalogProvider, MediaSourceProvider {
+) : BaseZenithProvider(), CatalogProvider, MediaSourceProvider {
 
     override suspend fun executeAction(
         actionId: String,
@@ -113,9 +113,7 @@ public class SampleProvider(
     }
 
     override suspend fun getSources(
-        shikimoriId: Int,
-        animeName: String,
-        russianName: String?,
+        mediaRef: MediaRef,
     ): ProviderResult<List<ProviderVideoSource>> {
         val source = ProviderVideoSource(
             name = "Sample Dubbing",

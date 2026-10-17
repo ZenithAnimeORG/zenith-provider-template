@@ -13,9 +13,16 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import zipfile
 from pathlib import Path
+
+MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_EXECUTABLE_BYTES = 128 * 1024 * 1024
+MAX_PACKAGE_ENTRIES = 64
+MAX_PACKAGE_BYTES = 256 * 1024 * 1024
+PROVIDER_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 
 try:
     from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -124,17 +131,78 @@ def cmd_index(args):
     entries = []
     for zpk_path in zpk_files:
         try:
+            package_size = zpk_path.stat().st_size
+        except OSError as error:
+            print(f"Warning: Skipping {zpk_path.name} (unable to inspect package size: {error})")
+            continue
+        if package_size > MAX_PACKAGE_BYTES:
+            print(f"Warning: Skipping {zpk_path.name} (package exceeds size limit)")
+            continue
+        try:
             with zipfile.ZipFile(zpk_path, "r") as zf:
-                if "manifest.json" not in zf.namelist():
+                names = zf.namelist()
+                if len(names) > MAX_PACKAGE_ENTRIES:
+                    print(f"Warning: Skipping {zpk_path.name} (too many package entries)")
+                    continue
+                if len(set(names)) != len(names):
+                    print(f"Warning: Skipping {zpk_path.name} (duplicate package entries)")
+                    continue
+                if names.count("manifest.json") != 1:
                     print(f"Warning: Skipping {zpk_path.name} (missing manifest.json)")
                     continue
-                manifest_data = json.loads(zf.read("manifest.json").decode("utf-8"))
+                manifest_info = zf.getinfo("manifest.json")
+                if manifest_info.file_size > MAX_MANIFEST_BYTES:
+                    print(f"Warning: Skipping {zpk_path.name} (manifest exceeds size limit)")
+                    continue
+                manifest_data = json.loads(zf.read(manifest_info).decode("utf-8"))
+                if not isinstance(manifest_data, dict):
+                    print(f"Warning: Skipping {zpk_path.name} (manifest must be a JSON object)")
+                    continue
+
+                provider_id = manifest_data.get("id")
+                if (
+                    not isinstance(provider_id, str)
+                    or PROVIDER_ID_PATTERN.fullmatch(provider_id) is None
+                    or provider_id in {".", ".."}
+                ):
+                    print(f"Warning: Skipping {zpk_path.name} (invalid provider ID)")
+                    continue
+
+                artifact_entries = manifest_data.get("entry") or {}
+                if not isinstance(artifact_entries, dict):
+                    print(f"Warning: Skipping {zpk_path.name} (invalid artifact declarations)")
+                    continue
+                declared_entries = {
+                    "jvm": artifact_entries.get("jvm") or "provider.jar",
+                    "android": artifact_entries.get("android") or "provider.dex",
+                }
+                available_artifacts = {}
+                for platform, artifact_name in declared_entries.items():
+                    expected_suffix = ".jar" if platform == "jvm" else ".dex"
+                    if (
+                        not isinstance(artifact_name, str)
+                        or not artifact_name
+                        or "/" in artifact_name
+                        or "\\" in artifact_name
+                        or not artifact_name.lower().endswith(expected_suffix)
+                        or artifact_name not in names
+                    ):
+                        continue
+                    artifact_info = zf.getinfo(artifact_name)
+                    if not artifact_info.is_dir() and artifact_info.file_size <= MAX_EXECUTABLE_BYTES:
+                        available_artifacts[platform] = artifact_name
+                if not available_artifacts:
+                    print(f"Warning: Skipping {zpk_path.name} (package contains no declared platform executable)")
+                    continue
         except Exception as e:
             print(f"Warning: Failed to read {zpk_path.name}: {e}")
             continue
 
-        zpk_bytes = zpk_path.read_bytes()
-        sha256 = hashlib.sha256(zpk_bytes).hexdigest()
+        try:
+            sha256 = sha256_file(zpk_path)
+        except OSError as error:
+            print(f"Warning: Skipping {zpk_path.name} (unable to calculate package checksum: {error})")
+            continue
         artifact_url = f"{base_url}/{zpk_path.name}" if base_url else zpk_path.name
 
         artifact = {
@@ -145,11 +213,11 @@ def cmd_index(args):
         entry = {
             "id": manifest_data.get("id"),
             "name": manifest_data.get("name", ""),
-            "version": manifest_data.get("version", "1.0.0"),
+            "version": manifest_data.get("version", "0.1.0"),
             "capabilities": manifest_data.get("capabilities", []),
             "entryClass": manifest_data.get("entryClass", ""),
-            "androidArtifact": artifact,
-            "desktopArtifact": artifact,
+            "androidArtifact": artifact if "android" in available_artifacts else None,
+            "desktopArtifact": artifact if "jvm" in available_artifacts else None,
             "icon": manifest_data.get("icon"),
             "homepage": manifest_data.get("homepage"),
             "description": manifest_data.get("description", "")
@@ -168,6 +236,14 @@ def cmd_index(args):
 
     print(f"Generated index catalog with {len(entries)} provider(s) -> {output_path}")
     return 0
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as package_file:
+        for chunk in iter(lambda: package_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def cmd_verify(args):

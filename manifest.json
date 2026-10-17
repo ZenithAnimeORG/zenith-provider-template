@@ -1,7 +1,8 @@
 {
   "id": "template_provider",
   "name": "Template Provider",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "sdkVersion": "0.1.0",
   "author": "Zenith Community",
   "description": "Starter template provider demonstrating catalog search and stream resolution.",
   "entryClass": "com.example.zenith.provider.SampleProviderFactory",

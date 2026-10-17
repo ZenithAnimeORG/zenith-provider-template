@@ -6,7 +6,7 @@ ktor = "3.6.0"
 kermit = "2.2.0"
 ksoup = "0.2.6"
 junit = "4.13.2"
-zenith-sdk = "2.0.0"
+zenith-sdk = "0.1.0"
 
 [libraries]
 zenith-provider-sdk = { module = "com.pilldev.zenith:provider-sdk", version.ref = "zenith-sdk" }
